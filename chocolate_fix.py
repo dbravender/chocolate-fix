@@ -55,9 +55,10 @@ def floating_overlay(overlay):
     return func
 
 
-def solve_board(overlays):
+def solve_board(overlays, verify_just_one=False):
     problem = Problem()
     spot_constraints = defaultdict(list)
+    overlay_constraints = []
     for overlay in overlays:
         # the simplest case is a fully 3x3 grid
         if len(overlay) == 3 and len(overlay[0]) == 3:
@@ -69,10 +70,12 @@ def solve_board(overlays):
                         get_constraints(overlay[x][y]))
         else:
             # dealing with a grid that is smaller than 3x3 so we
-            # need to make relative constraints
-            problem.addConstraint(
-                FunctionConstraint(floating_overlay(overlay)),
-                locations)
+            # need to make relative constraints - we add those
+            # after the all different constraint so it only needs
+            # to look at possible boards
+            overlay_constraints.append(
+                (FunctionConstraint(floating_overlay(overlay)),
+                 locations))
 
     # the unspecified spots could be any piece
     for x in range(3):
@@ -85,10 +88,18 @@ def solve_board(overlays):
 
     problem.addConstraint(AllDifferentConstraint())
 
-    solutions = problem.getSolutions()
-    assert len(solutions) == 1, ('%d solutions but there should be 1' %
-                                 len(solutions))
-    solution = solutions[0]
+    for overlay_constraint in overlay_constraints:
+        problem.addConstraint(*overlay_constraint)
+
+    solution = None
+
+    if verify_just_one:
+        solutions = problem.getSolutions()
+        assert len(solutions) == 1, ('%d solutions but there should be 1' %
+                                     len(solutions))
+        solution = solutions[0]
+    else:
+        solution = problem.getSolution()
 
     answer = [[None] * 3 for x in range(3)]
     for x in range(3):
